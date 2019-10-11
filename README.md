@@ -1,6 +1,6 @@
 # Pigeon FTP
 
-![Build Status](http://152.46.19.167:9999/)
+![Build Status](http://152.46.19.167:9999/image.png)
 
 ![Pigeon FTP](./pigeon.png)
 
