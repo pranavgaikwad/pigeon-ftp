@@ -1,6 +1,6 @@
 # Pigeon FTP
 
-[![Build Status](http://152.46.19.167:8080/buildStatus/icon?job=Pigeon+FTP)](http://152.46.19.167:8080/job/Pigeon%20FTP/)
+[![Build Status](http://152.46.19.167:8080/buildStatus/icon?job=Pigeon+FTP)](http://152.46.19.167:8080/buildStatus/icon?job=Pigeon+FTP/)
 
 ![Pigeon FTP](./pigeon.png)
 
