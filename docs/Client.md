@@ -1,3 +1,4 @@
 # Client
 
-
+Continue Reading : 
+- [Server Design](./Server.md)
