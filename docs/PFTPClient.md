@@ -1,12 +1,12 @@
 # PFTP Client
 
-PFTPClient implements the sending side of data transfer. 
+PFTPClient implements the sending side of data transfer. It can be used to send data to multiple receivers.
 
-It provides `rdt_send()` interface to send arbitrary data to a receiver. It can be configured to use a custom `MSS (Maximum Segment Size)` value and a `timeout` value. 
+It provides `rdt_send()` interface to send arbitrary data to `n` number of receivers where `n` can be configured at startup. Optionally, it can use custom `MSS (Maximum Segment Size)` and `timeout` values. 
 
 ## rdt\_send()
 
-`rdt_send(bytes)` is the main communication primitive provided by PFTPClient. It internally buffers bytes to make fixed size `(MSS)` segments before they are transferred over an un-reliable channel. A timeout counter on each segment identifies lost segments. 
+`rdt_send(bytes)` is the main communication primitive provided by PFTPClient. It internally buffers bytes to make fixed size `(MSS)` segments before they are transferred over an un-reliable channel. A timeout counter on each segment identifies lost segments. UDP checksum fields in segment headers provide error control.
 
 ## Protocol
 
@@ -22,9 +22,7 @@ Each segment is attached a header that has following fields
 
 ## Bookkeeping
 
-PFTPClient keeps track of `ACKs` using an in-memory list. Each entry in the list is a tuple : `(<receiver_addr>:string, <sequence_number>:int)`. 
-
-`sequence_number` field specifies the last segment number sent to the receiver specified by `<receiver_addr>`. Whenever `ACK` for a particular segment is received, it is removed from the list. The list always contains only segments that are awaiting their `ACKs`.
+PFTPClient keeps track of `ACKs` using an in-memory map indexed by remote addresses of destination hosts.  The value of the each key is a `sequence_number`. It specifies the last segment number sent to the receiver. Whenever `ACK` for a particular segment is received, it is removed from the map. The map always contains only segments that are awaiting their `ACKs`.
 
 Continue Reading :
 - [Client Design](./Client.md)

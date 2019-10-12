@@ -18,17 +18,21 @@ class CommTest(unittest.TestCase):
         actual = SegmentBuilder().with_data(data).with_seq(seq).build()
         self.assertNotEquals(expected, actual)
 
-    def test_segment_builder_from_str(self):
+    def test_segment_builder_from_bytes(self):
         data = b'1010101010101010'
         checksum = data
         stype = Segment.TYPE_DATA
         seq = b'10101010101010101010101010101010'
-        actual = SegmentBuilder.from_str(b''.join([seq,stype,checksum,data]))
+        actual = SegmentBuilder.from_bytes(b''.join([seq,stype,checksum,data]))
         expected = Segment(data)
         expected.header.seq = seq
         expected.header.stype = stype 
         expected.header.checksum = checksum
         self.assertEquals(expected, actual)
+
+        expected.header.checksum = b''
+        self.assertNotEquals(expected, actual)
+
 
 if __name__ == "__main__":
     unittest.main()
