@@ -1,14 +1,14 @@
 import unittest
 import socket
-from pftp.client.Client import Client
+import threading
+from pftp.client.Client import Client, UnsupportedSizeError 
 
 class ClientTest(unittest.TestCase):
-    SERVER_PORT = 9000
-    SERVER_HOST = '0.0.0.0'
+    SERVER_ADDR = ('0.0.0.0', 9000)
 
     def setUp(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((ClientTest.SERVER_HOST, ClientTest.SERVER_PORT))
+        self.sock.bind(ClientTest.SERVER_ADDR)
         return super().setUp()
 
     def tearDown(self):
@@ -18,23 +18,59 @@ class ClientTest(unittest.TestCase):
     def test_udt_send(self):
         data = b'1'*16
         client = Client()
-        client.udt_send(data, ClientTest.SERVER_HOST, ClientTest.SERVER_PORT)
+        client.udt_send(data, ClientTest.SERVER_ADDR)
         received, addr = self.sock.recvfrom(1024)
         self.assertEquals(received, data)
 
+        clients = [Client()]*10
+        threads = [threading.Thread(target=clients[i].udt_send(data, ClientTest.SERVER_ADDR)) for i in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        received = []
+        for i in range(10):
+            rcvd, addr = self.sock.recvfrom(1024)
+            received.append(rcvd)
+        self.assertEquals([data]*10, received)
+
         data = b'0'*1025
-        client.udt_send(data, ClientTest.SERVER_HOST, ClientTest.SERVER_PORT)
+        client.udt_send(data, ClientTest.SERVER_ADDR)
         received, addr = self.sock.recvfrom(1024)
         self.assertEquals(data[:1024], received)
 
         # udp packet limits on packet size
         data = b'0'*65535
-        client.udt_send(data, ClientTest.SERVER_HOST, ClientTest.SERVER_PORT)
-        received, addr = self.sock.recvfrom(65535)
+        client.udt_send(data, ClientTest.SERVER_ADDR)
+        received = b''
+        while len(received) < 65535:
+            try: 
+                self.sock.settimeout(10)
+                rcvd, addr = self.sock.recvfrom(65535)
+                received += rcvd
+            except socket.timeout:
+                break
         len_recv = len(received)
-        # server should only receive first 9216 bytes here
-        # needs to be handled in udt_recv to get all data
-        self.assertNotEquals(data, received)
+        self.assertEquals(data, received)
+
+    def test_udt_recv(self):
+        data = b'1'*10
+        client = Client()
+        client.udt_send(data, ClientTest.SERVER_ADDR)
+        d, addr = self.sock.recvfrom(1024)
+        self.sock.sendto(d, addr)
+        received, addr = client.udt_recv(10)
+        self.assertEquals(received, data)
+
+        data = b'1'*9217
+        client.udt_send(data, ClientTest.SERVER_ADDR)
+        d, addr = self.sock.recvfrom(1024)
+        client.udt_send(data, addr)
+        received, addr = client.udt_recv(9217)
+        l = len(received)
+        self.assertEquals(received, data)
+
+        self.assertRaises(UnsupportedSizeError, client.udt_recv, Client.RECV_BUF_SIZE+1)
 
 if __name__ == "__main__":
     unittest.main()
