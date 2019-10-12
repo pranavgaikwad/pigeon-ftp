@@ -14,6 +14,7 @@ The `Servers` on the other hand, are always running and are expecting a file fro
 Continue Reading :
 - [Client Design](./Client.md)
 - [Server Design](./Server.md)
+- [PFTP Client](./PFTPClient.md)
 - [Problem Statement](./ProblemStatement.md)
 
 

@@ -16,9 +16,9 @@ PFTPClient ensures reliable data transfer by using Stop-and-Wait Automatic Repea
 
 Each segment is attached a header that has following fields
 
-- `Seq` : a 32-bit Sequence Number
-- `Checksum` : UDP checksum of segment
-- `Type` : a 16-bit field that specifies this is a data packet
+- *Seq :* a 32-bit Sequence Number
+- *Checksum :* UDP checksum of segment
+- *Type :* a 16-bit field that specifies this is a data packet
 
 ## Bookkeeping
 

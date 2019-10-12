@@ -1,4 +1,4 @@
-# Protocol Primitives
+# Protocol
 
 `proto` package provides different protocol primitives. 
 
