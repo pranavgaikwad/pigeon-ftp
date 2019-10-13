@@ -5,7 +5,7 @@ class StopAndWait(object):
     __metaclass__ = ABCMeta
 
     @classmethod
-    def version(self): return "1.0"
+    def version(cls): return "1.0"
 
     @abstractmethod
     def send(self): raise NotImplementedError
