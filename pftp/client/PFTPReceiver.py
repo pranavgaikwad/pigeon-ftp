@@ -8,10 +8,10 @@ class PFTPReceiver(object):
 
     QUEUE_TIMEOUT = 3
 
-    def __init__(self, addr):
+    def __init__(self, addr, maxsize=0):
         self.addr = addr
         self.stack_seq = []        # a stack of sequence numbers
-        self.queue_msg = Queue()   # a queue of bytes
+        self.queue_msg = Queue(maxsize=size)   # a queue of bytes
         self.mutex = Lock()        # a mutex on byte queue
         self.logger = logger()
 
