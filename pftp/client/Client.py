@@ -1,14 +1,18 @@
 import socket
 from pftp.utils.logger import logger
 
+
 class SendError(Exception):
     pass
+
 
 class ReceiveError(Exception):
     pass
 
+
 class UnsupportedSizeError(Exception):
     pass
+
 
 class Client(object):
     """ generic UDP client """
@@ -33,11 +37,12 @@ class Client(object):
             to_send = min(size-sent, Client.SEND_BUF_SIZE)
             sent += self.sock.sendto(data[sent:sent+to_send], dest)
         self.logger.info('Sent {} bytes to {}'.format(sent, dest))
-    
+
     def udt_recv(self, size):
         """ receive bytes from unreliable channel """
         if size > Client.RECV_BUF_SIZE:
-            raise UnsupportedSizeError('Cannot receive more than {} bytes'.format(Client.RECV_BUF_SIZE))
+            raise UnsupportedSizeError(
+                'Cannot receive more than {} bytes'.format(Client.RECV_BUF_SIZE))
         received = b''
         while len(received) < size:
             try:
@@ -48,5 +53,6 @@ class Client(object):
             except socket.timeout:
                 self.logger.error('Connection timed out')
                 raise ReceiveError('Connection timed out')
-        self.logger.info('Received {} bytes from {}'.format(len(received), addr))
+        self.logger.info(
+            'Received {} bytes from {}'.format(len(received), addr))
         return received, addr
