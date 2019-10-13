@@ -1,7 +1,7 @@
 from queue import Queue, Full as FullError, Empty as EmptyError
 from threading import Lock
 from pftp.utils.logger import logger
-
+from struct import unpack, pack
 
 class PFTPReceiver(object):
     """ Client's representation of a receiver """
@@ -25,13 +25,13 @@ class PFTPReceiver(object):
         try:
             # NOTE : O(n) can we do better?
             # to MSS size logic becomes easier later, we want messages byte by byte
-            for b in mbytes:
+            for b in list(unpack("{}c".format(len(mbytes)), mbytes)):
                 self.queue_msg.put(b, timeout=PFTPReceiver.QUEUE_TIMEOUT)
         except FullError:
-            self.logger.error('Queue full for receiver {}'.format(str(self)))
+            self.logger.error("Queue full for receiver {}".format(str(self)))
         except Exception as e:
             self.logger.error(
-                'Failed enqueuing bytes for receiver {} : {}'.format(str(self), str(e)))
+                "Failed enqueuing bytes for receiver {} : {}".format(str(self), str(e)))
         finally:
             self.mutex.release()
 
@@ -52,16 +52,16 @@ class PFTPReceiver(object):
                 mbytes += self.queue_msg.get(
                     timeout=PFTPReceiver.QUEUE_TIMEOUT)
         except EmptyError:
-            self.logger.error('Queue empty for receiver {}'.format(str(self)))
+            self.logger.error("Queue empty for receiver {}".format(str(self)))
         except Exception as e:
             self.logger.error(
-                'Failed dequeuing bytes from receiver {} : {}'.format(str(self), str(e)))
+                "Failed dequeuing bytes from receiver {} : {}".format(str(self), str(e)))
         finally:
             self.mutex.release()
         return mbytes
 
     def __eq__(self, value):
-        return True if self.host == value.host and self.port == value.port and self.addr == value.addr else False
+        return True if self.addr == value.addr else False
 
-    def __str__(self, value):
-        return "{}:{}".format(self.host, self.port)
+    def __str__(self):
+        return "{}:{}".format(self.addr[0], self.addr[1])

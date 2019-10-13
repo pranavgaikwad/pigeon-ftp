@@ -19,19 +19,17 @@ class PFTPReceiverTest(unittest.TestCase):
         r = PFTPReceiver(('0.0.0.0', 9999))        
         expected = b'0'*19
         r.enqueue_bytes(expected)
-        actual = r.dequeue_bytes(76)
+        actual = r.dequeue_bytes(19)
         self.assertEquals(actual, expected)
 
         # test order of dequeued bits
         expected = b'1010101001000010010101010010100100100101001001010110'
         r.enqueue_bytes(expected)
-        a1 = r.dequeue_bytes(1)
-        a2 = r.dequeue_bytes(10)
-        a3 = r.dequeue_bytes(10)
-        self.assertEquals(a1, expected[0])
-        self.assertEquals(a2, expected[1:11])
-        self.assertEquals(a3, expected[11:21])
-
+        a1, a2, a3 = r.dequeue_bytes(1), r.dequeue_bytes(10), r.dequeue_bytes(10)
+        e0, e1, e2 = expected[0:1], expected[1:11], expected[11:21]
+        self.assertEquals(a1, e0)
+        self.assertEquals(a2, e1)
+        self.assertEquals(a3, e2)
 
 if __name__ == "__main__":
     unittest.main()
