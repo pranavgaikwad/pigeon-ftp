@@ -28,11 +28,10 @@ class Client(object):
     def udt_send(self, data, dest):
         """ send bytes to destination hosts on an unreliable channel """
         size = len(data)
-        dest_ip, dest_port = dest
         sent = 0
         while sent < size:
             to_send = min(size-sent, Client.SEND_BUF_SIZE)
-            sent += self.sock.sendto(data[sent:sent+to_send], (dest_ip, dest_port))
+            sent += self.sock.sendto(data[sent:sent+to_send], dest)
         self.logger.info('Sent {} bytes to {}'.format(sent, dest))
     
     def udt_recv(self, size):

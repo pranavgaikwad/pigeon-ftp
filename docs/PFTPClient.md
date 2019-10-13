@@ -8,6 +8,8 @@ It provides `rdt_send()` interface to send arbitrary data to `n` number of recei
 
 `rdt_send(bytes)` is the main communication primitive provided by PFTPClient. It internally buffers bytes to make fixed size `(MSS)` segments before they are transferred over an un-reliable channel. A timeout counter on each segment identifies lost segments. UDP checksum fields in segment headers provide error control.
 
+![rdt_send()](./rdt_send.png)
+
 ## Protocol
 
 PFTPClient ensures reliable data transfer by using Stop-and-Wait Automatic Repeat Request protocol. The `proto` package provides primitives to achieve that. See [Protocol.md](./Protocol.md)
