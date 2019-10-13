@@ -1,6 +1,6 @@
 # PFTP Client
 
-PFTPClient implements the sending side of data transfer. It can be used to send data to multiple receivers.
+PFTPClient implements the sending side of data transfer. Being a point-to-multipoint capable client, it can be used to send data to multiple receivers.
 
 It provides `rdt_send()` interface to send arbitrary data to `n` number of receivers where `n` can be configured at startup. Optionally, it can use custom `MSS (Maximum Segment Size)` and `timeout` values. 
 
@@ -9,6 +9,8 @@ It provides `rdt_send()` interface to send arbitrary data to `n` number of recei
 `rdt_send(bytes)` is the main communication primitive provided by PFTPClient. It internally buffers bytes to make fixed size `(MSS)` segments before they are transferred over an un-reliable channel. A timeout counter on each segment identifies lost segments. UDP checksum fields in segment headers provide error control.
 
 ![rdt_send()](./rdt_send.png)
+
+Remember, there could be `n` different `RFTPReceiver` in the above figure.
 
 ## Protocol
 
