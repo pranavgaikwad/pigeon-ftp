@@ -57,14 +57,14 @@ class PFTPClientTest(unittest.TestCase):
     def _test_blocking_timeout(self, timeout, delta):
         client = PFTPClient([])
         t1 = time()
-        sent = client.rdt_send(b'00000'*2900000000, btimeout=timeout)
+        sent = client.rdt_send(b'00000'*2900, btimeout=timeout)
         t2 = time()
         client.logger.info("")
         client.logger.info("Took : {}".format(t2-t1))
         self.assertAlmostEquals(t2-t1, timeout, delta=delta)
 
     def test_blocking_timeout(self):
-        self._test_blocking_timeout(timeout=10, delta=10)
+        self._test_blocking_timeout(timeout=1, delta=1)
 
     def test_rdt_send_blocking(self):
         msg = b'010101'*2000
