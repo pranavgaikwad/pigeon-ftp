@@ -15,7 +15,11 @@ class UnsupportedSizeError(Exception):
 
 
 class Client(object):
-    """ generic UDP client """
+    """ A generic UDP client 
+    
+    Provides udt_send and udt_recv to send data on an un-reliable channel.
+    """
+
     # MSS value cannot be higher than this
     RECV_BUF_SIZE = 65535
     SEND_BUF_SIZE = 4096
