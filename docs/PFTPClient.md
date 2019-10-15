@@ -8,9 +8,11 @@ It provides `rdt_send()` interface to send arbitrary data to `n` number of recei
 
 `rdt_send(bytes)` is the main communication primitive provided by PFTPClient. It internally buffers bytes to make fixed size `(MSS)` segments before they are transferred over an un-reliable channel. A timeout counter on each segment identifies lost segments. UDP checksum fields in segment headers provide error control.
 
+`rdt_send()` can be invoked in two modes - blocking, or non-blocking. In blocking mode, the function waits until all bytes are sent reliably and returns the number of bytes sent. In non-blocking mode, the function returns immediately and sends bytes in background. Upon failure, it invokes an Error in non-blocking mode. 
+
 ![rdt_send()](./rdt_send.png)
 
-Remember, there could be `n` different `RFTPReceiver` in the above figure.
+The above figure depicts a non-blocking mode operation. In blocking mode, there is no worker.
 
 ## Protocol
 

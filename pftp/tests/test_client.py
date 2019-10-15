@@ -1,7 +1,7 @@
 import unittest
 import socket
 import threading
-from pftp.client.Client import Client, UnsupportedSizeError 
+from pftp.client.client import Client, UnsupportedSizeError 
 
 class ClientTest(unittest.TestCase):
     SERVER_ADDR = ('0.0.0.0', 9000)
