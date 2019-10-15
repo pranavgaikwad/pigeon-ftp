@@ -20,7 +20,7 @@ class ClientTest(unittest.TestCase):
         client = Client()
         client.udt_send(data, ClientTest.SERVER_ADDR)
         received, addr = self.sock.recvfrom(1024)
-        self.assertEquals(received, data)
+        self.assertEqual(received, data)
 
         clients = [Client()]*10
         threads = [threading.Thread(target=clients[i].udt_send(data, ClientTest.SERVER_ADDR)) for i in range(10)]
@@ -32,12 +32,12 @@ class ClientTest(unittest.TestCase):
         for i in range(10):
             rcvd, addr = self.sock.recvfrom(1024)
             received.append(rcvd)
-        self.assertEquals([data]*10, received)
+        self.assertEqual([data]*10, received)
 
         data = b'0'*1025
         client.udt_send(data, ClientTest.SERVER_ADDR)
         received, addr = self.sock.recvfrom(1024)
-        self.assertEquals(data[:1024], received)
+        self.assertEqual(data[:1024], received)
 
         # udp packet limits on packet size
         data = b'0'*65535
@@ -51,7 +51,7 @@ class ClientTest(unittest.TestCase):
             except socket.timeout:
                 break
         len_recv = len(received)
-        self.assertEquals(data, received)
+        self.assertEqual(data, received)
 
     def test_udt_recv(self):
         data = b'1'*10
@@ -60,7 +60,7 @@ class ClientTest(unittest.TestCase):
         d, addr = self.sock.recvfrom(1024)
         self.sock.sendto(d, addr)
         received, addr = client.udt_recv(10)
-        self.assertEquals(received, data)
+        self.assertEqual(received, data)
 
         data = b'1'*9217
         client.udt_send(data, ClientTest.SERVER_ADDR)
@@ -68,7 +68,7 @@ class ClientTest(unittest.TestCase):
         client.udt_send(data, addr)
         received, addr = client.udt_recv(9217)
         l = len(received)
-        self.assertEquals(received, data)
+        self.assertEqual(received, data)
 
         self.assertRaises(UnsupportedSizeError, client.udt_recv, Client.RECV_BUF_SIZE+1)
 

@@ -12,10 +12,10 @@ class ProtocolTest(unittest.TestCase):
         expected.header.seq = seq
         expected.header.stype = stype
         expected.header.checksum = data
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
 
         actual = SegmentBuilder().with_data(data).with_seq(seq).build()
-        self.assertNotEquals(expected, actual)
+        self.assertNotEqual(expected, actual)
 
     def test_segment_builder_from_bytes(self):
         data = b'1010101010101010'
@@ -27,10 +27,10 @@ class ProtocolTest(unittest.TestCase):
         expected.header.seq = seq
         expected.header.stype = stype 
         expected.header.checksum = checksum
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
 
         expected.header.checksum = b''
-        self.assertNotEquals(expected, actual)
+        self.assertNotEqual(expected, actual)
 
 if __name__ == "__main__":
     unittest.main()
