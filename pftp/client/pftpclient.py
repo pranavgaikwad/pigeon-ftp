@@ -2,7 +2,6 @@ from math import inf
 from time import time
 from collections import deque
 from threading import Lock, Thread
-from pftp.utils.timeout import timeout
 from pftp.proto.header import PFTPHeader as Header
 from pftp.client.client import Client, ReceiveError
 from pftp.proto.sequence import SequenceNumberGenerator
