@@ -1,15 +1,19 @@
 import unittest
 from time import time
 from threading import Thread
+from pftp.utils.logger import logger
+from pftp.proto.checksum import _chunk_bytes
 from pftp.client.pftpclient import PFTPClient
 from socket import socket, AF_INET, SOCK_DGRAM
 from pftp.proto.header import PFTPHeader as Header
+from pftp.proto.sequence import SequenceNumberGenerator
 from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment
 
 class PFTPClientTest(unittest.TestCase):
     SERVER_ADDR = ('0.0.0.0', 8998)
 
     def setUp(self):
+        self.logger = logger()
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.bind(PFTPClientTest.SERVER_ADDR)
         return super().setUp()
@@ -78,43 +82,59 @@ class PFTPClientTest(unittest.TestCase):
     def test_blocking_timeout(self):
         self._test_blocking_timeout(timeout=1, delta=1)
 
-    def test_rdt_send_blocking(self):
-        # Sending a multi-segment message
-        msg = b'1'*673
-        client = PFTPClient([self.SERVER_ADDR], mss=400)
-        t1 = Thread(target=client.rdt_send, args=[msg,])
-        t1.start()
-        # first segment
-        recvd, addr = self.sock.recvfrom(400)
-        client.logger.info('Received {} bytes from {}'.format(len(recvd), addr))
+    def _receive_segment(self, mss):
+        recvd, addr = self.sock.recvfrom(mss)
+        self.logger.info('Received {} bytes from {}'.format(len(recvd), addr))
+        return SegmentBuilder.from_bytes(recvd), addr
+
+    def _send_ack_to(self, seq, addr):
         ack = SegmentBuilder().with_seq(b'0'*32).with_type(Segment.TYPE_ACK).build()
         self.sock.sendto(ack.to_bytes(), addr)
-        client.logger.info('Sending ack back to {}'.format(addr))
-        e1 = SegmentBuilder().with_data(msg[:336]).with_seq(b'0'*32).with_type(Segment.TYPE_DATA).build()
-        a1 = SegmentBuilder.from_bytes(recvd)
-        # second segment
-        recvd, addr = self.sock.recvfrom(400)
-        client.logger.info('Received {} bytes from {}'.format(len(recvd), addr))
-        ack = SegmentBuilder().with_seq(b'0'*31+b'1').with_type(Segment.TYPE_ACK).build()
-        self.sock.sendto(ack.to_bytes(), addr)
-        client.logger.info('Sending ack back to {}'.format(addr))
-        e2 = SegmentBuilder().with_data(msg[336:672]).with_seq(b'0'*31+b'1').with_type(Segment.TYPE_DATA).build()
-        a2 = SegmentBuilder.from_bytes(recvd)
-        # third segment
-        recvd, addr = self.sock.recvfrom(400)
-        client.logger.info('Received {} bytes from {}'.format(len(recvd), addr))
-        ack = SegmentBuilder().with_seq(b'0'*30+b'1'+b'0').with_type(Segment.TYPE_ACK).build()
-        self.sock.sendto(ack.to_bytes(), addr)
-        client.logger.info('Sending ack back to {}'.format(addr))
-        e3 = SegmentBuilder().with_data(msg[672:]).with_seq(b'0'*31+b'1').with_type(Segment.TYPE_DATA).build()
-        a3 = SegmentBuilder.from_bytes(recvd)
-        
-        self.assertEqual(a1.header, e1.header)
-        self.assertEqual(a1.data, e1.data)
-        self.assertEqual(a2.header, e2.header)
-        self.assertEqual(a2.data, e2.data)
-        
+        self.logger.info('Sending ack back to {}'.format(addr))
+
+    def test_rdt_send_saw_1(self):
+        # SAW Test : Level 1
+        # send three segments from server. check for in-order delivery.
+        # do not send ACKs. let the server die in timeout.
+        mss = 400
+        client = PFTPClient([self.SERVER_ADDR], mss=mss)
+
+        msg = lambda size: b'1'*size
+        msg_size = 673
+        seq_gen = SequenceNumberGenerator()
+        # start a blocking send
+        t1 = Thread(target=client.rdt_send, args=[msg(msg_size),])
+        t1.start()
+        # check all segments
+        for chunk in _chunk_bytes(msg(msg_size), mss):
+            actual, addr = self._receive_segment(mss)
+            _, seq = seq_gen.get_next()
+            expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
+            self.assertEqual(actual.header.seq, expected.header.seq)
         t1.join()
+
+    def test_rdt_send_saw_2(self):
+        # SAW Test : Level 2
+        # send three segments from server. check for in-order delivery.
+        # send ACKs back to server. leave it at that.
+        mss = 400
+        client = PFTPClient([self.SERVER_ADDR], mss=mss)
+
+        msg = lambda size: b'1'*size
+        msg_size = 673
+        seq_gen = SequenceNumberGenerator()
+        # start a blocking send
+        t1 = Thread(target=client.rdt_send, args=[msg(msg_size),])
+        t1.start()
+        # check all segments
+        for chunk in _chunk_bytes(msg(msg_size), mss):
+            actual, addr = self._receive_segment(mss)
+            _, seq = seq_gen.get_next()
+            expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
+            self._send_ack_to(seq=actual.header.seq, addr=addr)
+            self.assertEqual(actual, expected)
+        t1.join()
+
 
 if __name__ == "__main__":
     unittest.main()
