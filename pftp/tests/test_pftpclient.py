@@ -1,10 +1,21 @@
 import unittest
 from time import time
 from pftp.client.pftpclient import PFTPClient
+from socket import socket, AF_INET, SOCK_DGRAM
+from pftp.proto.header import PFTPHeader as Header
+from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment
 
 class PFTPClientTest(unittest.TestCase):
+    SERVER_ADDR = ('0.0.0.0', 8998)
+
     def setUp(self):
+        self.sock = socket(AF_INET, SOCK_DGRAM)
+        self.sock.bind(PFTPClientTest.SERVER_ADDR)
         return super().setUp()
+
+    def tearDown(self):
+        self.sock.close()
+        return super().tearDown()
 
     def test_enqueue_bytes(self):
         c = PFTPClient([])
@@ -67,10 +78,34 @@ class PFTPClientTest(unittest.TestCase):
         self._test_blocking_timeout(timeout=1, delta=1)
 
     def test_rdt_send_blocking(self):
-        msg = b'010101'*2000
-        client = PFTPClient([], mss=400, btimeout=20)
+        # msg = b'010101'*2000
+        # client = PFTPClient([], mss=400, btimeout=20)
+        # sent = client.rdt_send(msg)
+        # self.assertEqual(sent, len(msg))
+
+        msg = b'1'*336
+        client = PFTPClient([self.SERVER_ADDR], mss=400)
         sent = client.rdt_send(msg)
-        self.assertEqual(sent, len(msg))
+        recvd, addr = self.sock.recvfrom(400)
+        expected_segment = SegmentBuilder().with_data(msg).with_seq(b'0'*32).with_type(Segment.TYPE_DATA).build()
+        actual_segment = SegmentBuilder.from_bytes(recvd)
+        self.assertEqual(actual_segment, expected_segment)
+
+        msg = b'1'*672
+        client = PFTPClient([self.SERVER_ADDR], mss=400)
+        sent = client.rdt_send(msg)
+        self.assertEqual(672, sent)
+        recvd, addr = self.sock.recvfrom(400)
+        e1 = SegmentBuilder().with_data(msg[:336]).with_seq(b'0'*32).with_type(Segment.TYPE_DATA).build()
+        a1 = SegmentBuilder.from_bytes(recvd)
+        recvd, addr = self.sock.recvfrom(400)
+        e2 = SegmentBuilder().with_data(msg[336:]).with_seq(b'0'*31+b'1').with_type(Segment.TYPE_DATA).build()
+        a2 = SegmentBuilder.from_bytes(recvd)
+        self.assertEqual(a1, e1)
+        self.assertEqual(a2, e2)
+
+        ack = SegmentBuilder().with_seq(b'0'*32).with_type(Segment.TYPE_ACK).build()
+        self.sock.sendto(ack.to_bytes(), addr)
 
 if __name__ == "__main__":
     unittest.main()

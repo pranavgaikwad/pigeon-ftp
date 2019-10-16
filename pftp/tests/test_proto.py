@@ -1,5 +1,8 @@
 import unittest
-from pftp.proto.proto import Segment, SegmentBuilder, Header
+from pftp.proto.checksum import checksum
+from pftp.proto.header import PFTPHeader as Header
+from pftp.proto.segment import PFTPSegment as Segment, SegmentBuilder
+
 
 class ProtocolTest(unittest.TestCase):
     def test_segment_builder(self):
@@ -11,7 +14,8 @@ class ProtocolTest(unittest.TestCase):
         expected.header = Header()
         expected.header.seq = seq
         expected.header.stype = stype
-        expected.header.checksum = data
+        expected.header.checksum = checksum(
+            header=expected.header, data=data)
         self.assertEqual(expected, actual)
 
         actual = SegmentBuilder().with_data(data).with_seq(seq).build()
@@ -22,15 +26,17 @@ class ProtocolTest(unittest.TestCase):
         checksum = data
         stype = Segment.TYPE_DATA
         seq = b'10101010101010101010101010101010'
-        actual = SegmentBuilder.from_bytes(b''.join([seq,stype,checksum,data]))
+        actual = SegmentBuilder.from_bytes(
+            b''.join([seq, stype, checksum, data]))
         expected = Segment(data)
         expected.header.seq = seq
-        expected.header.stype = stype 
+        expected.header.stype = stype
         expected.header.checksum = checksum
         self.assertEqual(expected, actual)
 
         expected.header.checksum = b''
         self.assertNotEqual(expected, actual)
+
 
 if __name__ == "__main__":
     unittest.main()
