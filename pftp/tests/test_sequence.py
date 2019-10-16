@@ -1,6 +1,6 @@
 import unittest
-from pftp.proto.proto import Header
-from pftp.proto.seq import SequenceNumberGenerator
+from pftp.proto.header import PFTPHeader as Header
+from pftp.proto.sequence import SequenceNumberGenerator
 
 class SequenceGeneratorTest(unittest.TestCase):
 
@@ -16,3 +16,6 @@ class SequenceGeneratorTest(unittest.TestCase):
         e1b, e2b, e3b = b'0'*seq_len, b'0'*seq_len, b'0'*(seq_len-1) + b'1'
         self.assertEqual(a2b, e2b) 
         self.assertEqual(a4b, e3b)
+
+if __name__ == "__main__":
+    unittest.main()

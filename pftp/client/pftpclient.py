@@ -1,25 +1,22 @@
-import sys
 from math import inf
 from time import time
 from collections import deque
-from struct import unpack, pack
 from threading import Lock, Thread
-from pftp.proto.proto import Header
 from pftp.client.client import Client
 from pftp.utils.timeout import timeout
-from pftp.proto.seq import SequenceNumberGenerator
-from pftp.proto.proto import Header, SegmentBuilder, Segment
+from pftp.proto.header import PFTPHeader as Header
+from pftp.proto.sequence import SequenceNumberGenerator
+from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment
 
 
 class PFTPReceiver(object):
     """ Client's representation of a receiver """
 
-    def __init__(self, addr, timeout=0, maxsize=0):
+    def __init__(self, addr):
         self.addr = addr
         self.last_seq = 0
         self.last_ack = 0
         self.last_sent_at = 0
-        self.logger = logger()
 
     def __eq__(self, value):
         return True if self.addr == value.addr else False
@@ -39,8 +36,7 @@ class PFTPClient(Client):
     QUEUE_TIMEOUT = 0.5
 
     def __init__(self, receivers, buffer=0, mss=4000, atimeout=3000, btimeout=inf):
-        """ An instance of PFTPClient can be used to send data reliably.
-
+        """
         Args:
             receivers ([addr]): list of socket addresses. each address is a pair (host, port)
             mss (int, optional): maximum segment size. Defaults to 4000.
@@ -48,7 +44,7 @@ class PFTPClient(Client):
             btimeout (int, optional): Blocking timeout in ms. Defaults to infinity.
         """
         self.queue_msg = deque()  # a queue of bytes
-        self.receivers = {str(r): r for r in receivers}
+        self.receivers = {str(r): PFTPReceiver(r) for r in receivers}
         self.mss = mss
         self.atimeout = atimeout    # ARQ timeout
         self.blocking = True
@@ -68,7 +64,7 @@ class PFTPClient(Client):
             self.worker = Thread(target=self._rdt_send)
 
     def rdt_send(self, mbytes, btimeout=inf):
-        """ Sends bytes to pre-configured receivers reliably
+        """ Sends bytes to pre-configured receivers 
 
         Args:
             mbytes (bytes): byte string to send 
@@ -88,16 +84,29 @@ class PFTPClient(Client):
         # no of bytes sent
         sent = 0
         start_time = time()
-        stopped = lambda t: self.worker_stopped if not self.blocking else t <= 0
+        def stopped(
+            t): return self.worker_stopped if not self.blocking else t <= 0
         while not stopped(timeout) and self.queue_msg:
             # mss = headers + data
             mss_data = self._dequeue_bytes(
                 self.mss - (Header.LEN_SEQ + Header.LEN_CHECKSUM + Header.LEN_STYPE))
 
+            # get the next sequence number
             current_seq, current_seq_bytes = self.seq_generator.get_next()
+            # build a segment
             current_segment = SegmentBuilder().with_data(mss_data).with_seq(
                 current_seq_bytes).with_type(Segment.TYPE_DATA).build()
+            # send to all receivers
+            for r, receiver in self.receivers.items():
+                receiver.last_seq = self.seq_generator.get_current()
+                self.udt_send(current_segment.to_bytes(), receiver.addr)
+            # buffer for replies
+            # TODO: better approach?
+            replies = b''
+            # wait for reply
+            # for i in range(len(self.receivers)):
 
+            # wait for reply
             sent += len(mss_data)
             timeout -= (time()-start_time)
         return sent
@@ -130,7 +139,7 @@ class PFTPClient(Client):
             raise MemoryError("Byte queue full. Insufficient memory")
         except:
             self.logger.error(
-                "Failed enqueuing bytes {}".format(str(sys.exc_info()[0])))
+                "Failed enqueuing bytes")
 
     def _dequeue_bytes(self, size):
         """ Dequeues bytes thread-safe from the receiver's queue
@@ -146,6 +155,7 @@ class PFTPClient(Client):
         mbytes = b''
         all_bytes = b''
         try:
+            # NOTE: can we improve this piece?
             while len(all_bytes) < size:
                 all_bytes += self.queue_msg.popleft()
             to_deque = min(len(all_bytes), size)
