@@ -15,6 +15,9 @@ class PFTPHeader(object):
     def __eq__(self, other):
         return True if self.seq == other.seq and self.stype == other.stype and self.checksum == other.checksum else False
 
+    def __len__(self):
+        return len(self.seq+self.stype+self.checksum)
+
     def to_bytes(self):
         return self.seq+self.stype+self.checksum
 
