@@ -59,7 +59,7 @@ class ClientTest(unittest.TestCase):
         client.udt_send(data, ClientTest.SERVER_ADDR)
         d, addr = self.sock.recvfrom(1024)
         self.sock.sendto(d, addr)
-        received, addr = client.udt_recv(10)
+        received, addr = client.udt_recv(11)
         self.assertEqual(received, data)
 
         data = b'1'*9217
