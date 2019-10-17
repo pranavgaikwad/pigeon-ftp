@@ -13,9 +13,8 @@ class PFTPReceiver(object):
 
     def __init__(self, addr):
         self.addr = addr
-        self.last_seq = 0
-        self.last_ack = 0
-        self.last_sent_at = 0
+        self.last_seq = -1
+        self.last_ack = -2
 
     def __eq__(self, value):
         return True if self.addr == value.addr else False
@@ -80,43 +79,59 @@ class PFTPClient(Client):
         Optionally, a timeout interval can be specified to discard all bytes on timeout and return.
         In non-blocking mode, function runs in background and throws error on failure.
         """
+        # from now onwards, timeout should be ARQ timeout
         self.sock.settimeout(self.atimeout)
         # no of bytes sent
         sent = 0
         start_time = time()
         def stopped(
             t): return self.worker_stopped if not self.blocking else t <= 0
-        while not stopped(timeout) and self.queue_msg:
-            # mss = headers + data
-            mss_data = self._dequeue_bytes(
-                self.mss - (Header.LEN_SEQ + Header.LEN_CHECKSUM + Header.LEN_STYPE))
-
+        last_seq = self.seq_generator.get_current()
+        mss_data = b''
+        while not stopped(timeout) and (self.queue_msg or mss_data):
             # get the next sequence number
             current_seq, current_seq_bytes = self.seq_generator.get_next()
+
+            # mss = headers + data
+            # only deque next bytes when last ones are sent successfully
+            if last_seq != current_seq:
+                mss_data = self._dequeue_bytes(self.mss - Header.size())
+
             # build a segment
             current_segment = SegmentBuilder().with_data(mss_data).with_seq(
                 current_seq_bytes).with_type(Segment.TYPE_DATA).build()
+
             # send to all receivers
             for r, receiver in self.receivers.items():
-                receiver.last_seq = self.seq_generator.get_current()
-                self.logger.info('Sending {} bytes to {}'.format(len(current_segment), receiver.addr))
-                self.udt_send(current_segment.to_bytes(), receiver.addr)
+                self.logger.info('Sending {} bytes to {}'.format(
+                    len(current_segment), receiver.addr))
+                if receiver.last_seq != receiver.last_ack:
+                    receiver.last_seq = current_seq
+                    self.udt_send(current_segment.to_bytes(), receiver.addr)
+
             # buffer for replies
             replies = b''
             # wait for reply
-            while len(replies) < len(self.receivers)*64:
+            # we are expecting ACKs from n receivers.
+            # size of ACK = size of header. there is no data.
+            reply_size = len(self.receivers)*Header.size()
+            # NOTE: Better approach for timeout?
+            while len(replies) < len(self.receivers)*Header.size():
                 try:
                     reply, addr = self.udt_recv(64)
                     replies += reply
                 except ReceiveError:
                     # timed out
                     break
+            
+            # undo sequence number when enough bytes are not received
+            if len(replies) < reply_size:
+                self.seq_generator.undo_one()
 
-            # wait for reply
+            # loop control
+            last_seq = current_seq
             sent += len(mss_data)
             timeout -= (time()-start_time)
-        else:
-            self.sock.close()
         return sent
 
     def _stop_worker(self):
@@ -177,19 +192,3 @@ class PFTPClient(Client):
             self.logger.error(
                 "Failed dequeuing bytes {}".format(str(e)))
         return mbytes
-    
-        # _enqueue
-        # for b in list(unpack("{}c".format(len(mbytes)), mbytes)):
-        #     self.queue_msg.put(b, timeout=PFTPClient.QUEUE_TIMEOUT)
-
-        # _deque
-        # all_bytes = b''
-        # to_deque = min(len(all_bytes), size)
-        # mbytes = all_bytes[0:to_deque]
-        # append remaining size back to deque
-        # if all_bytes[to_deque:]:
-        # self.queue_msg.appendleft(all_bytes[to_deque:])
-
-        # for i in range(size):
-        #     mbytes += self.queue_msg.get(
-        #         timeout=PFTPClient.QUEUE_TIMEOUT)
