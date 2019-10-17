@@ -16,7 +16,7 @@ class UnsupportedSizeError(Exception):
 
 class Client(object):
     """ A generic UDP client 
-    
+
     Provides udt_send and udt_recv to send data on an un-reliable channel.
     """
 
@@ -26,7 +26,7 @@ class Client(object):
 
     # this is not the ARQ timeout
     # internal timeout helps prevent infinite loops
-    INTERNAL_TIMEOUT = 10
+    INTERNAL_TIMEOUT = 3
 
     def __init__(self):
         self.logger = logger()
@@ -56,6 +56,8 @@ class Client(object):
                 received += rcvd
             except socket.timeout:
                 self.logger.error('Connection timed out')
+                if received:
+                    break
                 raise ReceiveError('Connection timed out')
         self.logger.info(
             'Received {} bytes from {}'.format(len(received), addr))

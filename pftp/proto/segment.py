@@ -19,6 +19,9 @@ class PFTPSegment(object):
     def to_bytes(self):
         return self.header.to_bytes() + self.data
 
+    def __len__(self):
+        return len(self.header) + len(self.data)
+
 class MalformedSegmentError(Exception):
     pass
 
