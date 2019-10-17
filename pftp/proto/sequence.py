@@ -1,6 +1,7 @@
 from struct import unpack
 from pftp.proto.header import PFTPHeader as Header
 
+
 class SequenceNumberGenerator(object):
     """ Helps generate sequence numbers reliably 
 
@@ -22,3 +23,7 @@ class SequenceNumberGenerator(object):
 
     def from_int(self, seq):
         return ("{0:0%db}" % Header.LEN_SEQ).format(seq).encode()
+
+    def undo_one(self):
+        self.seq -= 1
+        return self.seq, self.from_int(self.seq)
