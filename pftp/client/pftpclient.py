@@ -2,10 +2,11 @@ from math import inf
 from time import time
 from collections import deque
 from threading import Lock, Thread
+from pftp.proto.checksum import verify
 from pftp.proto.header import PFTPHeader as Header
 from pftp.client.client import Client, ReceiveError
 from pftp.proto.sequence import SequenceNumberGenerator
-from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment
+from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment, MalformedSegmentError
 
 
 class PFTPReceiver(object):
@@ -42,7 +43,7 @@ class PFTPClient(Client):
             btimeout (int, optional): Blocking timeout in ms. Defaults to infinity.
         """
         self.queue_msg = deque()  # a queue of bytes
-        self.receivers = {str(r): PFTPReceiver(r) for r in receivers}
+        self.receivers = {str(PFTPReceiver(r)): PFTPReceiver(r) for r in receivers}
         self.mss = mss
         self.atimeout = atimeout    # ARQ timeout
         self.blocking = True
@@ -60,7 +61,7 @@ class PFTPClient(Client):
             self.mutex_worker = Lock()
             self.worker_stopped = False
             self.worker = Thread(target=self._rdt_send)
-
+            
     def rdt_send(self, mbytes, btimeout=inf):
         """ Sends bytes to pre-configured receivers 
 
@@ -71,6 +72,8 @@ class PFTPClient(Client):
         self._enqueue_bytes(mbytes)
         if self.blocking:
             return self._rdt_send(timeout=btimeout)
+        else:
+            self.worker.start()
 
     def _rdt_send(self, timeout=inf):
         """ internal impl of rdt_send
@@ -88,6 +91,7 @@ class PFTPClient(Client):
             t): return self.worker_stopped if not self.blocking else t <= 0
         last_seq = self.seq_generator.get_current()
         mss_data = b''
+        breaking_condition = lambda mss_data : (not self.queue_msg and not mss_data) if self.blocking else (not self.queue_msg)
         while not stopped(timeout) and (self.queue_msg or mss_data):
             # get the next sequence number
             current_seq, current_seq_bytes = self.seq_generator.get_next()
@@ -103,8 +107,8 @@ class PFTPClient(Client):
 
             # send to all receivers
             for r, receiver in self.receivers.items():
-                self.logger.info('Sending {} bytes to {}'.format(
-                    len(current_segment), receiver.addr))
+                self.logger.info('Sending {} bytes with seq {} to {}'.format(
+                    len(current_segment), current_seq, receiver.addr))
                 if receiver.last_seq != receiver.last_ack:
                     receiver.last_seq = current_seq
                     self.udt_send(current_segment.to_bytes(), receiver.addr)
@@ -115,23 +119,36 @@ class PFTPClient(Client):
             # we are expecting ACKs from n receivers.
             # size of ACK = size of header. there is no data.
             reply_size = len(self.receivers)*Header.size()
+            verified = True
             # NOTE: Better approach for timeout?
             while len(replies) < len(self.receivers)*Header.size():
                 try:
-                    reply, addr = self.udt_recv(64)
+                    reply, addr = self.udt_recv(Header.size())
+                    reply_segment = SegmentBuilder.from_bytes(reply)
+                    if verify(reply_segment) and int(reply_segment.header.seq, 2) == current_seq:
+                        receiver = PFTPReceiver(addr)
+                        self.receivers[str(receiver)].last_ack = reply_segment.header.seq
+                        self.logger.info('Received ack for seq {} from {}'.format(int(reply_segment.header.seq, 2), addr))
+                    else:
+                        verified = False
+                        self.logger.info('Bad ack from {}'.format(addr))
                     replies += reply
+                except MalformedSegmentError:
+                    verified = False
                 except ReceiveError:
-                    # timed out
+                    verified = False
                     break
             
             # undo sequence number when enough bytes are not received
-            if len(replies) < reply_size:
+            if not verified:
                 self.seq_generator.undo_one()
 
             # loop control
             last_seq = current_seq
             sent += len(mss_data)
             timeout -= (time()-start_time)
+        else:
+            self._stop_worker()
         return sent
 
     def _stop_worker(self):
