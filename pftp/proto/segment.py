@@ -1,5 +1,5 @@
-from pftp.proto.header import PFTPHeader
 from pftp.proto.checksum import checksum
+from pftp.proto.header import PFTPHeader, MalformedHeaderError
 
 class PFTPSegment(object):
     TYPE_ACK = b'1010101010101010'
@@ -65,6 +65,6 @@ class SegmentBuilder(object):
             segment.header = header
             segment.data = segment_bytes[PFTPHeader.LEN_CHECKSUM +
                                          PFTPHeader.LEN_SEQ+PFTPHeader.LEN_STYPE:]
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, MalformedHeaderError):
             raise MalformedSegmentError()
         return segment

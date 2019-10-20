@@ -88,10 +88,9 @@ class PFTPClient(Client):
         sent = 0
         start_time = time()
         def stopped(
-            t): return self.worker_stopped if not self.blocking else t <= 0
+            t): return False if not self.blocking else t <= 0
         last_seq = self.seq_generator.get_current()
         mss_data = b''
-        breaking_condition = lambda mss_data : (not self.queue_msg and not mss_data) if self.blocking else (not self.queue_msg)
         while not stopped(timeout) and (self.queue_msg or mss_data):
             # get the next sequence number
             current_seq, current_seq_bytes = self.seq_generator.get_next()

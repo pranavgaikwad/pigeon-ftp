@@ -1,7 +1,7 @@
 import unittest
 from pftp.proto.checksum import checksum
-from pftp.proto.segment import PFTPSegment as Segment, SegmentBuilder
 from pftp.proto.header import PFTPHeader as Header, MalformedHeaderError
+from pftp.proto.segment import PFTPSegment as Segment, SegmentBuilder, MalformedSegmentError
 
 
 class ProtocolTest(unittest.TestCase):
@@ -38,6 +38,8 @@ class ProtocolTest(unittest.TestCase):
         self.assertNotEqual(expected, actual)
 
         self.assertEqual(len(actual.header), Header.LEN_SEQ+Header.LEN_STYPE+Header.LEN_CHECKSUM)
+
+        self.assertRaises(MalformedSegmentError, SegmentBuilder.from_bytes, b'0'*62)
 
     def test_header(self):
         data = b'1010101010101010'

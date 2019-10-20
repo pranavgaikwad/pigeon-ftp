@@ -103,47 +103,6 @@ class PFTPClientTest(unittest.TestCase):
         self.sock.sendto(ack.to_bytes(), addr)
         self.logger.info('Sending ack for seq {} back to {}'.format(int(ack.header.seq, 2), addr))
 
-    def test_rdt_send_non_blocking(self):
-        # non blocking mode test
-        mss = 400
-        client = PFTPClient([self.SERVER_ADDR], mss=mss)
-        msg = lambda size: b'1'*size
-
-        msg_size = 673
-        seq_gen = SequenceNumberGenerator()
-        client.setblocking(False)
-        client.rdt_send(msg(msg_size))
-        # start a blocking send
-        # check all segments
-        for chunk in _chunk_bytes(msg(msg_size), mss-Header.size()):
-            actual, addr = self._receive_segment(mss)
-            _, seq = seq_gen.get_next()
-            expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
-            self._send_ack_to(seq=actual.header.seq, addr=addr)
-            self.assertEqual(actual, expected)
-
-    def test_rdt_send_saw_1(self):
-        # SAW Test : Level 1
-        # send three segments from server. check for in-order delivery.
-        # send ACKs back to server. leave it at that.
-        mss = 400
-        client = PFTPClient([self.SERVER_ADDR], mss=mss)
-        msg = lambda size: b'1'*size
-
-        msg_size = 673
-        seq_gen = SequenceNumberGenerator()
-        # start a blocking send
-        t1 = Thread(target=client.rdt_send, args=[msg(msg_size),])
-        t1.start()
-        # check all segments
-        for chunk in _chunk_bytes(msg(msg_size), mss-Header.size()):
-            actual, addr = self._receive_segment(mss)
-            _, seq = seq_gen.get_next()
-            expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
-            self._send_ack_to(seq=actual.header.seq, addr=addr)
-            self.assertEqual(actual, expected)
-        t1.join()
-
     def test_rdt_send_saw_2(self):
         # SAW Test : Level 2
         # send one segment from server. check for delivery.
@@ -161,12 +120,16 @@ class PFTPClientTest(unittest.TestCase):
         actual, addr = self._receive_segment(mss)
         _, seq = seq_gen.get_next()
         expected = SegmentBuilder().with_data(msg(msg_size)).with_seq(seq).with_type(Segment.TYPE_DATA).build()
-        self.assertEqual(actual, expected)
+        self.assertEqual(actual.header.seq, expected.header.seq)
+        self.assertEqual(actual.header.stype, expected.header.stype)
+        self.assertEqual(actual.header.checksum, expected.header.checksum)
         # check retried segment 
         actual, addr = self._receive_segment(mss)
         _, seq = seq_gen.get_current()  # Notice sequence Number here
         expected = SegmentBuilder().with_data(msg(msg_size)).with_seq(seq).with_type(Segment.TYPE_DATA).build()
-        self.assertEqual(actual, expected)
+        self.assertEqual(actual.header.seq, expected.header.seq)
+        self.assertEqual(actual.header.stype, expected.header.stype)
+        self.assertEqual(actual.header.checksum, expected.header.checksum)
         t1.join()
 
     def test_rdt_send_saw_3(self):
@@ -193,7 +156,24 @@ class PFTPClientTest(unittest.TestCase):
         # finally make sure all 8000 bytes are received
         self.assertEqual(len(rcvd_msg), msg_size)
 
+    def test_rdt_send_saw_non_blocking(self):
+        # non blocking mode test
+        mss = 400
+        client = PFTPClient([self.SERVER_ADDR], mss=mss)
+        msg = lambda size: b'1'*size
 
+        msg_size = 673
+        seq_gen = SequenceNumberGenerator()
+        client.setblocking(False)
+        client.rdt_send(msg(msg_size))
+        # start a blocking send
+        # check all segments
+        for chunk in _chunk_bytes(msg(msg_size), mss-Header.size()):
+            actual, addr = self._receive_segment(mss)
+            _, seq = seq_gen.get_next()
+            expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
+            self._send_ack_to(seq=actual.header.seq, addr=addr)
+            self.assertEqual(actual, expected)
 
 if __name__ == "__main__":
     unittest.main()
