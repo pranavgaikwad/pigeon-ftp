@@ -1,7 +1,7 @@
 import unittest
 import socket
 import threading
-from pftp.client.client import Client, UnsupportedSizeError 
+from pftp.proto.pftpsocket import PFTPSocket as Client, UnsupportedSizeError 
 
 class ClientTest(unittest.TestCase):
     SERVER_ADDR = ('0.0.0.0', 9000)
@@ -23,7 +23,7 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(received, data)
 
         clients = [Client()]*10
-        threads = [threading.Thread(target=clients[i].udt_send(data, ClientTest.SERVER_ADDR)) for i in range(10)]
+        threads = [threading.Thread(target=clients[i].udt_send, args=[data, ClientTest.SERVER_ADDR]) for i in range(10)]
         for thread in threads:
             thread.start()
         for thread in threads:
