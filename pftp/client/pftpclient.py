@@ -4,8 +4,8 @@ from collections import deque
 from threading import Lock, Thread
 from pftp.proto.checksum import verify
 from pftp.proto.header import PFTPHeader as Header
-from pftp.client.client import Client, ReceiveError
 from pftp.proto.sequence import SequenceNumberGenerator
+from pftp.proto.pftpsocket import PFTPSocket, ReceiveError
 from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment, MalformedSegmentError
 
 
@@ -24,7 +24,7 @@ class PFTPReceiver(object):
         return "{}:{}".format(self.addr[0], self.addr[1])
 
 
-class PFTPClient(Client):
+class PFTPClient(PFTPSocket):
     """ Pigeon FTP client with SAW ARQ 
 
     Supports both blocking and non-blocking operations. Runs in blocking mode by default.
@@ -43,7 +43,8 @@ class PFTPClient(Client):
             btimeout (int, optional): Blocking timeout in ms. Defaults to infinity.
         """
         self.queue_msg = deque()  # a queue of bytes
-        self.receivers = {str(PFTPReceiver(r)): PFTPReceiver(r) for r in receivers}
+        self.receivers = {str(PFTPReceiver(r)): PFTPReceiver(r)
+                          for r in receivers}
         self.mss = mss
         self.atimeout = atimeout    # ARQ timeout
         self.blocking = True
@@ -61,7 +62,7 @@ class PFTPClient(Client):
             self.mutex_worker = Lock()
             self.worker_stopped = False
             self.worker = Thread(target=self._rdt_send)
-            
+
     def rdt_send(self, mbytes, btimeout=inf):
         """ Sends bytes to pre-configured receivers 
 
@@ -124,10 +125,12 @@ class PFTPClient(Client):
                 try:
                     reply, addr = self.udt_recv(Header.size())
                     reply_segment = SegmentBuilder.from_bytes(reply)
-                    if verify(reply_segment) and int(reply_segment.header.seq, 2) == current_seq:
+                    if verify(reply_segment) and reply_segment.header.seq == current_seq_bytes:
                         receiver = PFTPReceiver(addr)
-                        self.receivers[str(receiver)].last_ack = reply_segment.header.seq
-                        self.logger.info('Received ack for seq {} from {}'.format(int(reply_segment.header.seq, 2), addr))
+                        self.receivers[str(
+                            receiver)].last_ack = reply_segment.header.seq
+                        self.logger.info('Received ack for seq {} from {}'.format(
+                            int(reply_segment.header.seq, 2), addr))
                     else:
                         verified = False
                         self.logger.info('Bad ack from {}'.format(addr))
@@ -137,10 +140,12 @@ class PFTPClient(Client):
                 except ReceiveError:
                     verified = False
                     break
-            
+
             # undo sequence number when enough bytes are not received
             if not verified:
                 self.seq_generator.undo_one()
+            else:
+                mss_data = b''
 
             # loop control
             last_seq = current_seq
