@@ -146,7 +146,7 @@ class PFTPClientTest(unittest.TestCase):
         t1.start()
         while len(rcvd_msg) < msg_size:
             try: 
-                segment, addr = self._receive_segment(mss)
+                segment, addr = self._receive_segment(mss+Header.size())
             except (socketTimeout, MalformedSegmentError):
                 continue
             if bool(random.getrandbits(1)):
@@ -168,8 +168,8 @@ class PFTPClientTest(unittest.TestCase):
         client.rdt_send(msg(msg_size))
         # start a blocking send
         # check all segments
-        for chunk in _chunk_bytes(msg(msg_size), mss-Header.size()):
-            actual, addr = self._receive_segment(mss)
+        for chunk in _chunk_bytes(msg(msg_size), mss):
+            actual, addr = self._receive_segment(mss+Header.size())
             _, seq = seq_gen.get_next()
             expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
             self._send_ack_to(seq=actual.header.seq, addr=addr)
