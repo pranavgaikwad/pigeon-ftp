@@ -168,7 +168,7 @@ class PFTPClientTest(unittest.TestCase):
         client.rdt_send(msg(msg_size))
         # start a blocking send
         # check all segments
-        for chunk in _chunk_bytes(msg(msg_size), mss+Header.size()):
+        for chunk in _chunk_bytes(msg(msg_size), mss):
             actual, addr = self._receive_segment(mss+Header.size())
             _, seq = seq_gen.get_next()
             expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
