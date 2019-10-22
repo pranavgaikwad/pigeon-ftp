@@ -27,11 +27,6 @@ class PFTPServer(PFTPSocket):
     def _errored(self):
         return True if self.err_prob >= random.random() else False
 
-    def deliver_data(self, data):
-        """ yields received data """
-        self.logger.info('Delivering data')
-        yield data
-
     def rdt_recv(self, timeout=inf):
         """ starts the server """
         def stopped(t): return True if t <= 0 else False
