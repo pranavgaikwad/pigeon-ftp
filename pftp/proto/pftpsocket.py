@@ -82,9 +82,10 @@ class PFTPSocket(object):
         try:
             while len(received) < size:
                 try:
+                    to_recv = min(PFTPSocket.SEND_BUF_SIZE, size)
                     rcvd, addr = self.sock.recvfrom(PFTPSocket.SEND_BUF_SIZE)
                     received += rcvd
-                    if len(rcvd) < PFTPSocket.SEND_BUF_SIZE:
+                    if len(rcvd) < to_recv:
                         break
                     self.logger.info(
                         'Received {} bytes from {}'.format(len(received), addr))
