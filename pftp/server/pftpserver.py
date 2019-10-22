@@ -2,6 +2,7 @@ import random
 from math import inf
 from time import time
 from pftp.proto.checksum import verify, checksum
+from pftp.proto.header import PFTPHeader as Header
 from pftp.proto.sequence import SequenceNumberGenerator
 from pftp.proto.pftpsocket import PFTPSocket, SendError, ReceiveError
 from pftp.proto.segment import PFTPSegment as Segment, SegmentBuilder, MalformedSegmentError
@@ -34,15 +35,14 @@ class PFTPServer(PFTPSocket):
     def rdt_recv(self, timeout=inf):
         """ starts the server """
         def stopped(t): return True if t <= 0 else False
-        start_time = time()
         seq_gen = SequenceNumberGenerator()
         current_seq = seq_gen.get_current()
-        segment = None
         while not stopped(timeout):
+            start_time = time()
             try:
                 current_seq, current_seq_bytes = seq_gen.get_next()
                 self.logger.info('Receiving {} bytes of data'.format(self.mss))
-                data, addr = self.udt_recv(size=self.mss)
+                data, addr = self.udt_recv(size=self.mss+Header.size())
 
                 segment = SegmentBuilder.from_bytes(data)
 
@@ -69,6 +69,6 @@ class PFTPServer(PFTPSocket):
             except:
                 self.logger.info('Unknown error in server')
             finally:
-                timeout -= (time() - start_time)
+                timeout -= int(time() - start_time)
         else:
             yield b''
