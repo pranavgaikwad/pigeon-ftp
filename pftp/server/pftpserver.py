@@ -25,7 +25,10 @@ class PFTPServer(PFTPSocket):
         self.err_prob = err_prob
 
     def _errored(self):
-        return True if self.err_prob >= random.random() else False
+        return True if self.err_prob >= random.uniform(0.0, 1.0) else False
+
+    def close(self):
+        self.sock.close()
 
     def rdt_recv(self, timeout=inf):
         """ starts the server """
@@ -57,8 +60,8 @@ class PFTPServer(PFTPSocket):
                 # deliver data to upper layer
                 yield segment.data
             except (MalformedSegmentError, SendError, ReceiveError):
-                seq_gen.undo_one()
                 self.logger.info('Retrying segment with seq {}'.format(seq_gen.get_current()[0]))
+                seq_gen.undo_one()
             except Exception as e:
                 self.logger.info('Unexpected error in server {}'.format(str(e)))
             except:
