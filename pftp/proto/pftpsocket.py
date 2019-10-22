@@ -23,7 +23,7 @@ class PFTPSocket(object):
 
     # MSS value cannot be higher than this
     RECV_BUF_SIZE = 65535
-    SEND_BUF_SIZE = 4096
+    SEND_BUF_SIZE = 8192
 
     # this is not the ARQ timeout
     # internal timeout helps prevent infinite loops
