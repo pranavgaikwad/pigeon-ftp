@@ -61,7 +61,7 @@ class PFTPClient(PFTPSocket):
         if not blocking:
             self.mutex_worker = Lock()
             self.worker_stopped = False
-            self.worker = Thread(target=self._rdt_send)
+            self.worker = Thread(target=self._rdt_send, name='PFTPWorker')
 
     def rdt_send(self, mbytes, btimeout=inf):
         """ Sends bytes to pre-configured receivers 
@@ -87,19 +87,20 @@ class PFTPClient(PFTPSocket):
         self.sock.settimeout(self.atimeout)
         # no of bytes sent
         sent = 0
-        start_time = time()
         def stopped(
             t): return False if not self.blocking else t <= 0
         last_seq = self.seq_generator.get_current()
         mss_data = b''
         while not stopped(timeout) and (self.queue_msg or mss_data):
+            start_time = time()
+
             # get the next sequence number
             current_seq, current_seq_bytes = self.seq_generator.get_next()
 
             # mss = headers + data
             # only deque next bytes when last ones are sent successfully
             if last_seq != current_seq:
-                mss_data = self._dequeue_bytes(self.mss - Header.size())
+                mss_data = self._dequeue_bytes(self.mss)
 
             # build a segment
             current_segment = SegmentBuilder().with_data(mss_data).with_seq(
