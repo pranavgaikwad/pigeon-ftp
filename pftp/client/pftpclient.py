@@ -45,7 +45,7 @@ class PFTPClient(PFTPSocket):
         self.receivers = {str(PFTPReceiver(r)): PFTPReceiver(r)
                           for r in receivers}
         self.mss = mss
-        self.atimeout = atimeout    # ARQ timeout
+        self.atimeout = atimeout  # ARQ timeout
         self.blocking = True
         self.seq_generator = SequenceNumberGenerator()
         super(PFTPClient, self).__init__()
@@ -84,19 +84,23 @@ class PFTPClient(PFTPSocket):
         """
         # from now onwards, timeout should be ARQ timeout
         self.sock.settimeout(self.atimeout)
+
         # no of bytes sent
         sent = 0
-        def stopped(
-            t): return False if not self.blocking else t <= 0
+
+        def stopped(t):
+            return False if not self.blocking else t <= 0
+
         last_seq = self.seq_generator.get_current()
         mss_data = b''
         while not stopped(timeout) and (self.queue_msg or mss_data):
             start_time = time()
 
-            # get the next sequence number
-            current_seq, current_seq_bytes = self.seq_generator.get_next()
+            _seq = Header.size() + self.mss
 
-            # mss = headers + data
+            # get the next sequence number
+            current_seq, current_seq_bytes = self.seq_generator.get_next(_seq)
+
             # only deque next bytes when last ones are sent successfully
             if last_seq != current_seq:
                 mss_data = self._dequeue_bytes(self.mss)
@@ -109,18 +113,20 @@ class PFTPClient(PFTPSocket):
             # send to all receivers whose acks are not received for given segment
             for r, receiver in self.receivers.items():
                 if current_seq_bytes != receiver.last_ack:
-                    self.logger.info('Sending {} bytes with seq {} to {}'.format(len(current_segment), current_seq, receiver.addr))
+                    self.logger.info(
+                        'Sending {} bytes with seq {} to {}'.format(len(current_segment), current_seq, receiver.addr))
                     self.udt_send(current_segment.to_bytes(), receiver.addr)
                     sent_to += 1
 
-
             # buffer for replies
             replies = b''
+
             # wait for reply
-            # we are expecting ACKs from n receivers.
-            # size of ACK = size of header. there is no data.
-            reply_size = sent_to*Header.size()
+            # we are expecting ACKs from n receivers
+            # size of ACK = size of header; there is no data
+            reply_size = sent_to * Header.size()
             verified = True
+
             # NOTE: Better approach for timeout?
             while len(replies) < reply_size:
                 try:
@@ -144,14 +150,14 @@ class PFTPClient(PFTPSocket):
 
             # undo sequence number when enough bytes are not received
             if not verified:
-                self.seq_generator.undo_one()
+                self.seq_generator.undo(_seq)
             else:
                 mss_data = b''
 
             # loop control
             last_seq = current_seq
             sent += len(mss_data)
-            timeout -= (time()-start_time)
+            timeout -= (time() - start_time)
         else:
             self._stop_worker()
         return sent

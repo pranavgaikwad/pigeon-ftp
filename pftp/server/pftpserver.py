@@ -32,22 +32,25 @@ class PFTPServer(PFTPSocket):
 
     def rdt_recv(self, timeout=inf):
         """ starts the server """
-        def stopped(t): return True if t <= 0 else False
+
+        def stopped(t):
+            return True if t <= 0 else False
+
         seq_gen = SequenceNumberGenerator()
-        current_seq = seq_gen.get_current()
         while not stopped(timeout):
             start_time = time()
+            _seq = Header.size() + self.mss
             try:
-                current_seq, current_seq_bytes = seq_gen.get_next()
-                self.logger.info('Receiving {} bytes of data'.format(self.mss+Header.size()))
-                data, addr = self.udt_recv(size=self.mss+Header.size())
+                current_seq, current_seq_bytes = seq_gen.get_next(_seq)
+                self.logger.info('Receiving {} bytes of data'.format(self.mss + Header.size()))
+                data, addr = self.udt_recv(size=self.mss + Header.size())
 
                 segment = SegmentBuilder.from_bytes(data)
 
                 # checksum
                 if not verify(segment) or (current_seq_bytes != segment.header.seq):
                     raise MalformedSegmentError
-                
+
                 # simulate error
                 if self._errored():
                     self.logger.info('Simulating error')
@@ -61,7 +64,7 @@ class PFTPServer(PFTPSocket):
                 yield segment.data
             except (MalformedSegmentError, SendError, ReceiveError):
                 self.logger.info('Retrying segment with seq {}'.format(seq_gen.get_current()[0]))
-                seq_gen.undo_one()
+                seq_gen.undo(_seq)
             except Exception as e:
                 self.logger.info('Unexpected error in server {}'.format(str(e)))
             except:

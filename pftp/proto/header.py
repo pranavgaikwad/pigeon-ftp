@@ -40,5 +40,6 @@ class PFTPHeader(object):
             raise MalformedHeaderError
         return h
 
+
 class MalformedHeaderError(Exception):
     pass

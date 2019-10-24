@@ -1,6 +1,7 @@
 from struct import unpack
 from pftp.proto.header import PFTPHeader as Header
 
+
 class SequenceNumberGenerator(object):
     """ Helps generate sequence numbers reliably 
 
@@ -10,12 +11,12 @@ class SequenceNumberGenerator(object):
     def __init__(self):
         self.seq = -1
 
-    def get_next(self):
-        self.seq += 1
+    def get_next(self, size=1):
+        self.seq += size
         return self.seq, SequenceNumberGenerator.from_int(self.seq)
 
-    def get_prev(self):
-        return self.seq-1, SequenceNumberGenerator.from_int(self.seq-1)
+    def get_prev(self, size=1):
+        return self.seq - size, SequenceNumberGenerator.from_int(self.seq - 1)
 
     def get_current(self):
         return self.seq, SequenceNumberGenerator.from_int(self.seq)
@@ -26,4 +27,8 @@ class SequenceNumberGenerator(object):
 
     def undo_one(self):
         self.seq -= 1
+        return self.seq, self.from_int(self.seq)
+
+    def undo(self, size=1):
+        self.seq -= size
         return self.seq, self.from_int(self.seq)

@@ -12,12 +12,12 @@ The FTP protocol provides a sophisticated file transfer service, but since it us
 
 ### Client Server Architecture
 
-To keep things simple, you will implement P2MP-FTP in a client-server architecture and omit the steps of opening up and terminating a connection. The P2MP-FTP client will play the role of the sender that connects to a set of of P2MP-FTP servers that play the role of the receivers in the reliable data transfer. All data transfer is from sender (client) to receivers (servers) only; only ACK packets travel from receivers to sender.
+To keep things simple, you will implement P2MP-FTP in a client-server architecture and omit the steps of opening up and terminating a connection. The P2MP-FTP client will play the role of the sender that connects to a set of P2MP-FTP servers that play the role of the receivers in the reliable data transfer. All data transfer is from sender (client) to receivers (servers) only; only ACK packets travel from receivers to sender.
 
 ### The P2MP-FTP Client (Sender)
 
 The P2MP-FTP client implements the sender in the reliable data transfer. When the client starts, it reads data from a file specified in the command line, and calls `rdt_send()` to transfer the data to the P2MP-FTP servers. For this project, we will assume that `rdt_send()` provides data from the file on a byte basis. The client also implements the sending side of the reliable Stop-and-Wait protocol, receiving data from `rdt_send()`, buffering the data locally, and ensuring that the data is received correctly at the server.
-The client also reads the value of the maximum segment size (MSS) from the command line. The Stop-andWait protocol buffers the data it receives from `rdt_send()` until it has at least one MSS worth of bytes. At that time it forms a segment that includes a header and MSS bytes of data; as a result, all segments sent, except possibly for the very last one, will have exactly MSS bytes of data.
+The client also reads the value of the maximum segment size (MSS) from the command line. The Stop-and-Wait protocol buffers the data it receives from `rdt_send()` until it has at least one MSS worth of bytes. At that time it forms a segment that includes a header and MSS bytes of data; as a result, all segments sent, except possibly for the very last one, will have exactly MSS bytes of data.
 
 The client transmits each segment separately to each of the receivers, and waits until it has received ACKs from every receiver before it can transmit the next segment. Every time a segment is transmitted, the sender sets a timeout counter. If the counter expires before ACKs from all receivers have been received, then the sender re-transmits the segment, but only to those receivers from which it has not received an ACK yet. This process repeats until all ACKs have been received (i.e., if there are n receivers, n ACKS, one from each receiver have arrived at the sender), at which time the sender proceeds to transmit the next segment.
 
@@ -33,7 +33,7 @@ The client implements the sending side of the Stop-and-Wait protocol as describe
 
 ### The P2MP-FTP Server (Receiver)
 
-The server listens on the well-known port 7735. It implements the receive side of the Stop-and-Wait protocol, as described in the book. Specifically, when it receives a data packet, it computes the checksum and checks whether it is in-sequence, and if so, it sends an ACK segment (using UDP) to the client; it then writes the received data into a file whose name is provided in the command line. If the packet received is out-ofsequence, an ACK for the last received in-sequence packet is sent;, if the checksum is incorrect, the receiver does nothing.
+The server listens on the well-known port 7735. It implements the receive side of the Stop-and-Wait protocol, as described in the book. Specifically, when it receives a data packet, it computes the checksum and checks whether it is in-sequence, and if so, it sends an ACK segment (using UDP) to the client; it then writes the received data into a file whose name is provided in the command line. If the packet received is out-of-sequence, an ACK for the last received in-sequence packet is sent; if the checksum is incorrect, the receiver does nothing.
 
 The ACK segment consists of three fields and no data:
 

@@ -1,7 +1,6 @@
 import errno
 import socket
 from time import sleep
-from struct import pack, unpack
 from pftp.utils.logger import logger
 
 
@@ -50,9 +49,9 @@ class PFTPSocket(object):
         size = len(data)
         sent = 0
         while sent < size:
-            to_send = min(size-sent, PFTPSocket.SEND_BUF_SIZE)
+            to_send = min(size - sent, PFTPSocket.SEND_BUF_SIZE)
             try:
-                sent += self.sock.sendto(data[sent:sent+to_send], dest)
+                sent += self.sock.sendto(data[sent:sent + to_send], dest)
             # OS socket buffers full
             except socket.error as e:
                 if e.errno == errno.EAGAIN:

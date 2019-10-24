@@ -10,6 +10,7 @@ from pftp.client.pftpclient import PFTPClient, PFTPReceiver
 from socket import socket, AF_INET, SOCK_DGRAM, timeout as socketTimeout
 from pftp.proto.segment import SegmentBuilder, PFTPSegment as Segment, MalformedSegmentError
 
+
 class PFTPClientTest(unittest.TestCase):
     SERVER_ADDR = ('127.0.0.1', 8998)
 
@@ -26,7 +27,7 @@ class PFTPClientTest(unittest.TestCase):
 
     def test_enqueue_bytes(self):
         c = PFTPClient([])
-        msg = b'0'*19
+        msg = b'0' * 19
         c._enqueue_bytes(msg)
         self.assertEqual(len(c.queue_msg), 1)
         c._enqueue_bytes(msg)
@@ -35,33 +36,33 @@ class PFTPClientTest(unittest.TestCase):
         self.assertEqual(len(c.queue_msg), 4)
 
     def test_dequeue_bytes(self):
-        c = PFTPClient([])        
-        expected = b'0'*19
+        c = PFTPClient([])
+        expected = b'0' * 19
         c._enqueue_bytes(expected)
         actual = c._dequeue_bytes(19)
         self.assertEqual(actual, expected)
 
-        c = PFTPClient([])        
-        expected = b'0'*19
+        c = PFTPClient([])
+        expected = b'0' * 19
         c._enqueue_bytes(expected)
         actual = c._dequeue_bytes(19)
         self.assertEqual(actual, expected)
 
-        expected = b'0'*40
+        expected = b'0' * 40
         c._enqueue_bytes(expected)
-        a1, e1 = c._dequeue_bytes(19), b'0'*19
-        a2, e2 = c._dequeue_bytes(1), b'0'*1
-        a3, e3 = c._dequeue_bytes(20), b'0'*20
+        a1, e1 = c._dequeue_bytes(19), b'0' * 19
+        a2, e2 = c._dequeue_bytes(1), b'0' * 1
+        a3, e3 = c._dequeue_bytes(20), b'0' * 20
         self.assertEqual(a1, e1)
         self.assertEqual(a2, e2)
         self.assertEqual(a3, e3)
 
         # 10 MB Test case
-        expected = b'1'*10000000
+        expected = b'1' * 10000000
         c._enqueue_bytes(expected)
         a1 = c._dequeue_bytes(10000000)
         self.assertEqual(a1, expected)
-            
+
         # test order of dequeued bits
         expected = b'1010101001000010010101010010100100100101001001010110'
         c._enqueue_bytes(expected)
@@ -84,11 +85,11 @@ class PFTPClientTest(unittest.TestCase):
     def _test_blocking_timeout(self, timeout, delta):
         client = PFTPClient([])
         t1 = time()
-        sent = client.rdt_send(b'00000'*2900, btimeout=timeout)
+        sent = client.rdt_send(b'00000' * 2900, btimeout=timeout)
         t2 = time()
         client.logger.info("")
-        client.logger.info("Took : {}".format(t2-t1))
-        self.assertAlmostEqual(t2-t1, timeout, delta=delta)
+        client.logger.info("Took : {}".format(t2 - t1))
+        self.assertAlmostEqual(t2 - t1, timeout, delta=delta)
 
     def test_blocking_timeout(self):
         self._test_blocking_timeout(timeout=1, delta=1)
@@ -109,16 +110,17 @@ class PFTPClientTest(unittest.TestCase):
         # do not send back ACK. wait for retry packet. use blocking timeout to return from loop
         mss = 400
         client = PFTPClient([self.SERVER_ADDR], mss=mss)
-        msg = lambda size: b'1'*size
+        msg = lambda size: b'1' * size
 
         msg_size = 336
         seq_gen = SequenceNumberGenerator()
         # start a blocking send
-        t1 = Thread(target=client.rdt_send, args=[msg(msg_size),3])
+        t1 = Thread(target=client.rdt_send, args=[msg(msg_size), 3])
         t1.start()
         # receive first segment 
         actual, addr = self._receive_segment(mss)
-        _, seq = seq_gen.get_next()
+        _seq = Header.size() + mss
+        _, seq = seq_gen.get_next(_seq)
         expected = SegmentBuilder().with_data(msg(msg_size)).with_seq(seq).with_type(Segment.TYPE_DATA).build()
         self.assertEqual(actual.header.seq, expected.header.seq)
         self.assertEqual(actual.header.stype, expected.header.stype)
@@ -137,7 +139,7 @@ class PFTPClientTest(unittest.TestCase):
         # simulate failures. check for retry.
         mss = 4000
         client = PFTPClient([self.SERVER_ADDR], mss=mss, atimeout=0.5)
-        msg = lambda size: b'1'*size
+        msg = lambda size: b'1' * size
 
         msg_size = 8000
         # start a blocking send
@@ -145,8 +147,8 @@ class PFTPClientTest(unittest.TestCase):
         rcvd_msg = b''
         t1.start()
         while len(rcvd_msg) < msg_size:
-            try: 
-                segment, addr = self._receive_segment(mss+Header.size())
+            try:
+                segment, addr = self._receive_segment(mss + Header.size())
             except (socketTimeout, MalformedSegmentError):
                 continue
             if bool(random.getrandbits(1)):
@@ -160,7 +162,7 @@ class PFTPClientTest(unittest.TestCase):
         # non blocking mode test
         mss = 400
         client = PFTPClient([self.SERVER_ADDR], mss=mss)
-        msg = lambda size: b'1'*size
+        msg = lambda size: b'1' * size
 
         msg_size = 673
         seq_gen = SequenceNumberGenerator()
@@ -169,11 +171,13 @@ class PFTPClientTest(unittest.TestCase):
         # start a blocking send
         # check all segments
         for chunk in _chunk_bytes(msg(msg_size), mss):
-            actual, addr = self._receive_segment(mss+Header.size())
-            _, seq = seq_gen.get_next()
+            actual, addr = self._receive_segment(mss + Header.size())
+            _seq = Header.size() + mss
+            _, seq = seq_gen.get_next(_seq)
             expected = SegmentBuilder().with_data(chunk).with_seq(seq).with_type(Segment.TYPE_DATA).build()
             self._send_ack_to(seq=actual.header.seq, addr=addr)
             self.assertEqual(actual, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
