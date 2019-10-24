@@ -14,7 +14,6 @@ class PFTPReceiver(object):
 
     def __init__(self, addr):
         self.addr = addr
-        self.last_seq = -1
         self.last_ack = -2
 
     def __eq__(self, value):
@@ -106,23 +105,24 @@ class PFTPClient(PFTPSocket):
             current_segment = SegmentBuilder().with_data(mss_data).with_seq(
                 current_seq_bytes).with_type(Segment.TYPE_DATA).build()
 
-            # send to all receivers
+            sent_to = 0
+            # send to all receivers whose acks are not received for given segment
             for r, receiver in self.receivers.items():
-                self.logger.info('Sending {} bytes with seq {} to {}'.format(
-                    len(current_segment), current_seq, receiver.addr))
-                if receiver.last_seq != receiver.last_ack:
-                    receiver.last_seq = current_seq
+                if current_seq_bytes != receiver.last_ack:
+                    self.logger.info('Sending {} bytes with seq {} to {}'.format(len(current_segment), current_seq, receiver.addr))
                     self.udt_send(current_segment.to_bytes(), receiver.addr)
+                    sent_to += 1
+
 
             # buffer for replies
             replies = b''
             # wait for reply
             # we are expecting ACKs from n receivers.
             # size of ACK = size of header. there is no data.
-            reply_size = len(self.receivers)*Header.size()
+            reply_size = sent_to*Header.size()
             verified = True
             # NOTE: Better approach for timeout?
-            while len(replies) < len(self.receivers)*Header.size():
+            while len(replies) < reply_size:
                 try:
                     reply, addr = self.udt_recv(Header.size())
                     reply_segment = SegmentBuilder.from_bytes(reply)
