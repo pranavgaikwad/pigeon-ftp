@@ -1,6 +1,6 @@
 import unittest
 from threading import Thread
-from pftp.utils.logger import logger
+from pftp.utils.app_utils import logger
 from pftp.client.pftpclient import PFTPClient
 from pftp.server.pftpserver import PFTPServer
 

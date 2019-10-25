@@ -1,7 +1,7 @@
 import errno
 import socket
 from time import sleep
-from pftp.utils.logger import logger
+from pftp.utils.app_utils import logger
 
 
 class SendError(Exception):

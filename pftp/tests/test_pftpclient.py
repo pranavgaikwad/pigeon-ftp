@@ -2,7 +2,7 @@ import random
 import unittest
 from time import time
 from threading import Thread
-from pftp.utils.logger import logger
+from pftp.utils.app_utils import logger
 from pftp.proto.checksum import _chunk_bytes
 from pftp.proto.header import PFTPHeader as Header
 from pftp.proto.sequence import SequenceNumberGenerator

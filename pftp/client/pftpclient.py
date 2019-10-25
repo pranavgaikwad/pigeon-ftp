@@ -33,7 +33,7 @@ class PFTPClient(PFTPSocket):
     # this is a timeout on Queue. prevents from running into blocking queues
     QUEUE_TIMEOUT = 0.5
 
-    def __init__(self, receivers, buffer=0, mss=4000, atimeout=2, btimeout=inf):
+    def __init__(self, receivers, buffer=0, mss=4000, atimeout=0.1, btimeout=inf):
         """
         Args:
             receivers ([addr]): list of socket addresses. each address is a pair (host, port)
@@ -152,11 +152,11 @@ class PFTPClient(PFTPSocket):
             if not verified:
                 self.seq_generator.undo(_seq)
             else:
+                sent += len(mss_data)
                 mss_data = b''
 
             # loop control
             last_seq = current_seq
-            sent += len(mss_data)
             timeout -= (time() - start_time)
         else:
             self._stop_worker()
