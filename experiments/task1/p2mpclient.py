@@ -6,13 +6,13 @@ from collections import defaultdict
 from pftp.client.pftpclient import PFTPClient
 
 if __name__ == "__main__":
-    n = int(sys.argv[1])
+    n = 1 # int(sys.argv[1])
 
     print('Starting P2MPClient Task 1 for n:', n)
 
     MSS = 500
     server_port = 7735
-    servers = [('127.0.0.1', server_port), ('', server_port), ('', server_port), ('', server_port), ('', server_port)]
+    servers = [('192.168.10.62', server_port), ('', server_port), ('', server_port), ('', server_port), ('', server_port)]
 
     with open('../data.txt', 'rb') as file:
         data = file.read()

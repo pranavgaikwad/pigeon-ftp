@@ -8,6 +8,9 @@ from pftp.proto.pftpsocket import PFTPSocket, SendError, ReceiveError
 from pftp.proto.segment import PFTPSegment as Segment, SegmentBuilder, MalformedSegmentError
 
 
+class DuplicateSegmentError(Exception):
+    pass
+
 class PFTPServer(PFTPSocket):
     """ PFTPServer : always running server receives messages from PFTPClient """
 
@@ -35,7 +38,7 @@ class PFTPServer(PFTPSocket):
 
         def stopped(t):
             return True if t <= 0 else False
-
+        
         seq_gen = SequenceNumberGenerator()
         while not stopped(timeout):
             start_time = time()
@@ -48,23 +51,28 @@ class PFTPServer(PFTPSocket):
                 segment = SegmentBuilder.from_bytes(data)
 
                 # checksum
-                if not verify(segment) or (current_seq_bytes != segment.header.seq):
-                    raise MalformedSegmentError
+                if not verify(segment):
+                    self.logger.info('Checksum failed')
+                    raise MalformedSegmentError 
 
                 # simulate error
                 if self._errored():
                     self.logger.info('Simulating error')
                     raise MalformedSegmentError
+                
+                to_ack, to_yield = current_seq_bytes, segment.data
+                if current_seq > int(segment.header.seq, 2):
+                    to_ack, to_yield = segment.header.seq, b''
 
-                ack = SegmentBuilder().with_data(b'').with_seq(current_seq_bytes).with_type(Segment.TYPE_ACK).build()
+                ack = SegmentBuilder().with_data(b'').with_seq(to_ack).with_type(Segment.TYPE_ACK).build()
 
                 self.udt_send(data=ack.to_bytes(), dest=addr)
 
                 # deliver data to upper layer
-                yield segment.data
+                yield to_yield
             except (MalformedSegmentError, SendError, ReceiveError):
-                self.logger.info('Retrying segment with seq {}'.format(seq_gen.get_current()[0]))
                 seq_gen.undo(_seq)
+                self.logger.info('Retrying segment with seq {}'.format(seq_gen.get_current()[0]))
             except Exception as e:
                 self.logger.info('Unexpected error in server {}'.format(str(e)))
             except:
