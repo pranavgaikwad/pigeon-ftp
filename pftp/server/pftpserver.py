@@ -63,6 +63,7 @@ class PFTPServer(PFTPSocket):
                 to_ack, to_yield = current_seq_bytes, segment.data
                 if current_seq > int(segment.header.seq, 2):
                     to_ack, to_yield = segment.header.seq, b''
+                    seq_gen.undo(_seq)
 
                 ack = SegmentBuilder().with_data(b'').with_seq(to_ack).with_type(Segment.TYPE_ACK).build()
 

@@ -4,11 +4,11 @@ from sys import argv
 
 if __name__ == "__main__":
     MSS = 500
-    p = 0.05
     port = int(argv[1])
+    p = float(argv[2])
     file = '{}:{}.txt'.format(get_true_ip(), port)
 
-    input('Press Enter to start')
+    input('Press Enter to start P2MPServer on port: {} with MSS: {}, p: {}'.format(port, MSS, p))
 
     addr = ('0.0.0.0', port)
     server = PFTPServer(addr=addr, mss=MSS, err_prob=p)

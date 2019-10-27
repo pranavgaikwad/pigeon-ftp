@@ -132,7 +132,9 @@ class PFTPClient(PFTPSocket):
                 try:
                     reply, addr = self.udt_recv(Header.size())
                     reply_segment = SegmentBuilder.from_bytes(reply)
-                    if verify(reply_segment) and reply_segment.header.seq == current_seq_bytes:
+                    if not verify(reply_segment):
+                        raise MalformedSegmentError
+                    if reply_segment.header.seq == current_seq_bytes:
                         receiver = PFTPReceiver(addr)
                         self.receivers[str(
                             receiver)].last_ack = reply_segment.header.seq
@@ -140,9 +142,10 @@ class PFTPClient(PFTPSocket):
                             int(reply_segment.header.seq, 2), addr))
                     else:
                         verified = False
-                        self.logger.info('Bad ack from {}'.format(addr))
+                        self.logger.error('Bad ack from {}'.format(addr))
                     replies += reply
                 except MalformedSegmentError:
+                    self.logger.error('Malformed segment from {}'.format(addr))
                     verified = False
                 except ReceiveError:
                     verified = False
