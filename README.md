@@ -42,10 +42,12 @@ source venv/bin/activate
 #### Install
 
 ```bash
+# install project modules
 python setup.py install
 ```
 
 ```bash
+# install external dependencies
 pip install -r requirements.txt
 ```
 
