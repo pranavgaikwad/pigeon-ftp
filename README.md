@@ -10,7 +10,50 @@ Under the hood, it uses UDP to send packets from one host to another. Stop-and-W
 
 ## Installation
 
+#### Clone this repo 
+
+```bash
+git clone git@github.ncsu.edu:pmgaikwa/pigeon-ftp pigeon-ftp
+
+# switch to directory
+cd pigeon-ftp
+```
+
+#### Install virtualenv on your box
+
+```bash
+pip --user install virtualenv
+```
+
+#### Create virtualenv
+
+```bash
+# create virtualenv
+virtualenv --python=<path_to_python_3.7_executable> venv		# starts a virtualenv in "pigeon-ftp" directory
+```
+
+#### Start virtualenv
+
+```bash
+# start venv
+source venv/bin/activate
+```
+
+#### Install
+
+```bash
+python setup.py install
+```
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Testing
+
+```bash
+python setup.py test
+```
 
 ## Documentation
 
